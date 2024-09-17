@@ -1,0 +1,127 @@
+import time
+import numpy as np
+import dlib
+import cv2
+from sklearn.metrics.pairwise import euclidean_distances
+from PIL import Image, ImageDraw, ImageFont
+
+fr = False
+sleep = False
+yawn_count = 0
+
+
+
+# 텍스트 추가 함수
+def add_text(img, text, position, color=(0, 255, 10), size=30):
+    if isinstance(img, np.ndarray):
+        img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+    draw = ImageDraw.Draw(img)
+
+    # Malgun Gothic 폰트 사용
+    font_path = "C:/Windows/Fonts/malgun.ttf"  # Windows 폰트 경로
+    font = ImageFont.truetype(font_path, size, encoding="utf-8")
+
+    draw.text(position, text, color, font=font)
+    return cv2.cvtColor(np.asarray(img), cv2.COLOR_RGB2BGR)
+
+# 눈 그리기
+def draw_eye(eye):
+    eye_contour = cv2.convexHull(eye)
+    # 화면에 표시하지 않기 때문에 이 함수는 비활성화
+
+# 눈 비율 계산
+def eye_ratio(eye):
+    A = euclidean_distances(np.array(eye[1]), np.array(eye[5]))
+    B = euclidean_distances(np.array(eye[2]), np.array(eye[4]))
+    C = euclidean_distances(np.array(eye[0]), np.array(eye[3]))
+    ratio = ((A + B) / 2.0) / C
+    return ratio
+
+# 입 비율 계산
+def mouth_ratio(shape):
+    A = euclidean_distances(np.array(shape[50]), np.array(shape[58]))
+    B = euclidean_distances(np.array(shape[51]), np.array(shape[57]))
+    C = euclidean_distances(np.array(shape[52]), np.array(shape[56]))
+    D = euclidean_distances(np.array(shape[48]), np.array(shape[54]))
+    return ((A + B + C) / 3) / D
+
+
+def mainmodel():
+    
+# 타이머 변수 및 하품 카운터
+    fr = False
+    sleep = False
+    yawn_count = 0
+    timer = 0
+
+    # 얼굴 감지기 및 랜드마크 예측기 초기화
+    detector = dlib.get_frontal_face_detector()
+    predictor = dlib.shape_predictor("models\shape_predictor_68_face_landmarks.dat")
+
+    # 비디오 캡처
+    cap = cv2.VideoCapture(0)
+
+
+    while True:
+        ret, frame = cap.read()
+        
+        # 얼굴 감지
+        rects = detector(frame, 0)
+        
+        if len(rects) == 0:  # 얼굴이 인식되지 않으면 텍스트 표시
+            
+            
+            
+            fr = False
+            print("fr:",fr)
+            
+        else:
+            fr = True
+            sleep = False
+            for rect in rects:
+                shape = predictor(frame, rect)
+                shape = np.matrix([[p.x, p.y] for p in shape.parts()])
+                
+                # 입과 눈 비율 계산
+                mar = mouth_ratio(shape)
+                right_eye = shape[36:42]
+                left_eye = shape[42:48]
+                right_ear = eye_ratio(right_eye)
+                left_ear = eye_ratio(left_eye)
+                ear = (left_ear + right_ear) / 2.0
+                
+                # 눈이 감긴 경우
+                if ear < 0.3 and mar < 0.5:
+                    timer += 1
+                    if timer >= 50:
+                        
+                        
+                        
+                        
+                        
+                        sleep = True
+                        print("sleep:",sleep)
+                        
+                else:
+                    timer = 0
+                
+                # 하품 감지 (입이 크게 벌어지면 하품으로 간주)
+                if mar > 0.70:
+                    yawn_count += 1
+                    
+                    print("yawn_count:",yawn_count)
+                    time.sleep(3)
+                    
+                # 눈과 하품 정보 표시
+                info = "EAR: {:.2f}".format(ear[0][0])
+                yawn_info = "하품 횟수: {}".format(yawn_count)
+                # print(info)
+                # print(yawn_info)
+        
+        # ESC키 누르면 종료
+        if cv2.waitKey(1) == 27:
+            break
+
+    cv2.destroyAllWindows()
+    cap.release()
+
