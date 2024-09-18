@@ -6,29 +6,52 @@
     <title>학생 모니터링</title>
     <script>
         document.addEventListener('DOMContentLoaded', (event) => {
+            // 학생 이름을 서버로 전달하여 해당 학생의 데이터를 가져옴
             const studentName = "{{ student_name }}";
             const eventSource = new EventSource(`/get_student_data/${studentName}`);
 
+            // SSE로 데이터를 수신했을 때 처리하는 부분
             eventSource.onmessage = function(event) {
                 console.log("Received data:", event.data);  // 디버깅을 위한 콘솔 로그
-                const studentData = JSON.parse(event.data);  // JSON 형식으로 데이터 파싱
+                const studentData = JSON.parse(event.data);  // 서버로부터 받은 데이터를 JSON 형식으로 변환
 
-                // 얼굴 인식 상태 표시
+                // 얼굴 인식 상태를 업데이트
                 const statusMessage = studentData.fr ? 
                     '얼굴 인식 성공' : 
                     '얼굴 인식 실패';
                 document.getElementById('status').textContent = statusMessage;
+
+                // 하품 횟수 업데이트
+                document.getElementById('yawn_count').textContent = `하품 횟수: ${studentData.yawn_count}`;
             };
 
+            // SSE 오류 처리
             eventSource.onerror = function(event) {
-                console.error("SSE Error:", event);  // 오류 로그
+                console.error("SSE Error:", event);  // 오류 로그 출력
             };
+
+            // 카메라 스트림을 가져오는 함수
+            async function startCamera() {
+                const videoElement = document.getElementById('video');
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    videoElement.srcObject = stream;  // 비디오 요소에 스트림 연결
+                } catch (err) {
+                    console.error("Error accessing the camera: ", err);  // 카메라 접근 오류 로그 출력
+                }
+            }
+
+            startCamera();  // 페이지 로드 후 카메라 시작
         });
     </script>
 </head>
 <body>
     <h1>{{ student_name }}님의 상태</h1>
-    <img src="{{ url_for('video_feed', student_name=student_name) }}" width="720" height="480">
+    <!-- 실시간 비디오 피드를 표시할 비디오 요소 -->
+    <video id="video" width="720" height="480" autoplay></video>
+
+    <!-- 얼굴 인식 상태 및 하품 횟수를 표시 -->
     <p id="status">로딩 중...</p>
+    <p id="yawn_count">하품 횟수: 0</p>
 </body>
 </html>

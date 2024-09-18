@@ -2,7 +2,7 @@ from models.face_detector import generate_frames
 from flask import Flask, render_template, request, redirect, url_for, Response, jsonify
 import json
 import time
-from datetime import datetime, timezone
+
 
 app = Flask(__name__)
 
