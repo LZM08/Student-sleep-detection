@@ -7,7 +7,7 @@ import time
 
 # 얼굴 감지기 및 랜드마크 예측기 초기화
 detector = dlib.get_frontal_face_detector()
-predictor = dlib.shape_predictor("models\shape_predictor_68_face_landmarks.dat")
+predictor = dlib.shape_predictor("models/shape_predictor_68_face_landmarks.dat")
 
 # 텍스트 추가 함수
 def add_text(img, text, position, color=(0, 255, 10), size=30):
