@@ -5,9 +5,12 @@ from sklearn.metrics.pairwise import euclidean_distances
 from PIL import Image, ImageDraw, ImageFont
 import time
 
+# 글로벌 변수 초기화
+students_data = {}
+
 # 얼굴 감지기 및 랜드마크 예측기 초기화
 detector = dlib.get_frontal_face_detector()
-predictor = dlib.shape_predictor("models/shape_predictor_68_face_landmarks.dat")
+predictor = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
 
 # 텍스트 추가 함수
 def add_text(img, text, position, color=(0, 255, 10), size=30):
@@ -30,7 +33,7 @@ def eye_ratio(eye):
     ratio = ((A + B) / 2.0) / C
     return ratio
 
-# 입 비율 계산
+# 입 비율 계산  
 def mouth_ratio(shape):
     A = euclidean_distances(np.array(shape[50]), np.array(shape[58]))
     B = euclidean_distances(np.array(shape[51]), np.array(shape[57]))
@@ -39,61 +42,52 @@ def mouth_ratio(shape):
     return ((A + B + C) / 3) / D
 
 # 학생 모니터링용 프레임 생성기
-def generate_frames(student_name, students_data):
+def process_frame(frame, student_name):
+    global students_data  # 글로벌 변수를 사용
     fr = False
     sleep = False
-    yawn_count = 0
     timer = 0
 
-    # 비디오 캡처
-    cap = cv2.VideoCapture(0)
+    # 학생의 하품 횟수 가져오기
+    if student_name not in students_data:
+        students_data[student_name] = {'yawn_count': 0}  # 초기화
+    yawn_count = students_data[student_name].get('yawn_count', 0)
 
-    while True:
-        success, frame = cap.read()
+    # 얼굴 감지
+    rects = detector(frame, 0)
+    
+    if len(rects) == 0:
+        fr = False  # 얼굴이 감지되지 않음
+    else:
+        fr = True  # 얼굴이 감지됨
+        for rect in rects:
+            shape = predictor(frame, rect)  # 얼굴 랜드마크 추출
+            shape = np.matrix([[p.x, p.y] for p in shape.parts()])  # 좌표 변환
 
-        if not success:
-            break
+            mar = mouth_ratio(shape)  # 입 비율 계산
+            right_eye = shape[36:42]  # 오른쪽 눈 랜드마크
+            left_eye = shape[42:48]  # 왼쪽 눈 랜드마크
+            right_ear = eye_ratio(right_eye)  # 오른쪽 눈 비율
+            left_ear = eye_ratio(left_eye)  # 왼쪽 눈 비율
+            ear = (left_ear + right_ear) / 2.0  # 평균 눈 비율
 
-        # 얼굴 감지
-        rects = detector(frame, 0)
-        
-        if len(rects) == 0:
-            fr = False
-        else:
-            fr = True
-            sleep = False
-            for rect in rects:
-                shape = predictor(frame, rect)
-                shape = np.matrix([[p.x, p.y] for p in shape.parts()])
+            # 졸음 및 하품 감지 로직
+            if ear < 0.3:  # EAR 기준
+                timer += 1
+                if timer >= 50:  # 50 프레임 이상 졸음 감지
+                    sleep = True  # 졸음 상태
+            else:
+                timer = 0
 
-                mar = mouth_ratio(shape)
-                right_eye = shape[36:42]
-                left_eye = shape[42:48]
-                right_ear = eye_ratio(right_eye)
-                left_ear = eye_ratio(left_eye)
-                ear = (left_ear + right_ear) / 2.0
+            if mar > 0.70:  # 하품 기준
+                yawn_count += 1  # 하품 감지
 
-                if ear < 0.3 and mar < 0.5:
-                    timer += 1
-                    if timer >= 50:
-                        sleep = True
-                else:
-                    timer = 0
+            # 프레임에 텍스트 추가
+            frame = add_text(frame, f"EAR: {ear[0][0]:.2f}", (10, 30))
+            frame = add_text(frame, f"하품 횟수: {yawn_count}", (10, 60))
+            frame = add_text(frame, f"졸음 상태: {'졸음' if sleep else '깨움'}", (10, 90))
 
-                if mar > 0.70:
-                    yawn_count += 1
-                    time.sleep(3)
+    # 하품 카운트를 업데이트
+    students_data[student_name]['yawn_count'] = yawn_count
 
-                frame = add_text(frame, f"EAR: {ear[0][0]:.2f}", (10, 30))
-                frame = add_text(frame, f"하품 횟수: {yawn_count}", (10, 60))
-
-        # 상태 업데이트
-        students_data[student_name] = {'fr': fr, 'sleep': sleep, 'yawn_count': yawn_count}
-
-        ret, buffer = cv2.imencode('.jpg', frame)
-        frame = buffer.tobytes()
-
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-
-    cap.release()
+    return fr, sleep, yawn_count, frame

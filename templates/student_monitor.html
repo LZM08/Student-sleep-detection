@@ -6,52 +6,64 @@
     <title>학생 모니터링</title>
     <script>
         document.addEventListener('DOMContentLoaded', (event) => {
-            // 학생 이름을 서버로 전달하여 해당 학생의 데이터를 가져옴
+            const video = document.createElement('video');
+            video.id = 'videoElement';  // 비디오 ID 추가
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
             const studentName = "{{ student_name }}";
-            const eventSource = new EventSource(`/get_student_data/${studentName}`);
+            const statusElem = document.getElementById('status');
+            const loadingElem = document.getElementById('loading');  // 로딩 메시지
+            loadingElem.style.display = 'block';  // 로딩 메시지 표시
 
-            // SSE로 데이터를 수신했을 때 처리하는 부분
-            eventSource.onmessage = function(event) {
-                console.log("Received data:", event.data);  // 디버깅을 위한 콘솔 로그
-                const studentData = JSON.parse(event.data);  // 서버로부터 받은 데이터를 JSON 형식으로 변환
+            // 웹캠 시작
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(stream => {
+                    video.srcObject = stream;
+                    video.play().catch(err => {
+                        console.error('Error playing video:', err);
+                        statusElem.textContent = '비디오 재생 오류';
+                    });
 
-                // 얼굴 인식 상태를 업데이트
-                const statusMessage = studentData.fr ? 
-                    '얼굴 인식 성공' : 
-                    '얼굴 인식 실패';
-                document.getElementById('status').textContent = statusMessage;
+                    // 주기적으로 이미지를 서버로 전송
+                    setInterval(() => {
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-                // 하품 횟수 업데이트
-                document.getElementById('yawn_count').textContent = `하품 횟수: ${studentData.yawn_count}`;
-            };
+                        // 캡처된 이미지를 서버로 전송
+                        canvas.toBlob(blob => {
+                            const formData = new FormData();
+                            formData.append('image', blob, 'frame.jpg');
 
-            // SSE 오류 처리
-            eventSource.onerror = function(event) {
-                console.error("SSE Error:", event);  // 오류 로그 출력
-            };
-
-            // 카메라 스트림을 가져오는 함수
-            async function startCamera() {
-                const videoElement = document.getElementById('video');
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                    videoElement.srcObject = stream;  // 비디오 요소에 스트림 연결
-                } catch (err) {
-                    console.error("Error accessing the camera: ", err);  // 카메라 접근 오류 로그 출력
-                }
-            }
-
-            startCamera();  // 페이지 로드 후 카메라 시작
+                            fetch(`/upload_frame/${studentName}`, {
+                                method: 'POST',
+                                body: formData
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                loadingElem.style.display = 'none';  // 로딩 메시지 숨김
+                                // 서버에서 받은 결과 처리
+                                const statusMessage = data.fr ? '얼굴 인식 성공' : '얼굴 인식 실패';
+                                statusElem.textContent = statusMessage;
+                            })
+                            .catch(err => {
+                                loadingElem.style.display = 'none';  // 로딩 메시지 숨김
+                                console.error('Error:', err);
+                                statusElem.textContent = '서버 통신 오류';
+                            });
+                        });
+                    }, 1000); // 1초마다 이미지 전송
+                })
+                .catch(err => {
+                    console.error('Error accessing webcam:', err);
+                    statusElem.textContent = '웹캠 접근 오류';
+                });
         });
     </script>
 </head>
 <body>
     <h1>{{ student_name }}님의 상태</h1>
-    <!-- 실시간 비디오 피드를 표시할 비디오 요소 -->
-    <video id="video" width="720" height="480" autoplay></video>
-
-    <!-- 얼굴 인식 상태 및 하품 횟수를 표시 -->
     <p id="status">로딩 중...</p>
-    <p id="yawn_count">하품 횟수: 0</p>
+    <p id="loading" style="display:none;">처리 중...</p>  <!-- 로딩 메시지 -->
 </body>
 </html>

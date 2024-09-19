@@ -1,19 +1,19 @@
-from models.face_detector import generate_frames
 from flask import Flask, render_template, request, redirect, url_for, Response, jsonify
 import json
 import time
-
+import cv2
+import numpy as np
+from models.face_detector import process_frame  # 이 함수의 정의가 필요합니다.
 
 app = Flask(__name__)
 
 students_data = {}  # 학생들의 이름과 상태를 저장하는 딕셔너리
 
-# 메인 페이지
-@app.route('/') 
+
+@app.route('/')
 def index():
     return render_template('index.html')
 
-# 학생 페이지
 @app.route('/student', methods=['GET', 'POST'])
 def student():
     if request.method == 'POST':
@@ -21,46 +21,60 @@ def student():
         return redirect(url_for('student_monitor', student_name=student_name))
     return render_template('student.html')
 
-# 학생 모니터링 페이지 (카메라 피드)
 @app.route('/student_monitor/<student_name>')
 def student_monitor(student_name):
     if student_name not in students_data:
         students_data[student_name] = {
-            'fr': True,  # 임시 데이터
+            'fr': True,
             'sleep': False,
             'yawn_count': 0
         }
     return render_template('student_monitor.html', student_name=student_name)
 
-# 학생 데이터 SSE (이름별)
 @app.route('/get_student_data/<student_name>')
 def get_student_data(student_name):
     def event_stream():
         while True:
             time.sleep(2)  # 주기적으로 업데이트 (2초)
             student_data = students_data.get(student_name, {
-                'fr': True,  # 임시 데이터
+                'fr': True,
                 'sleep': False,
                 'yawn_count': 0
             })
-            yield f"data: {json.dumps(student_data)}\n\n"  # JSON 형식으로 변환하여 전송
+            yield f"data: {json.dumps(student_data)}\n\n"
     return Response(event_stream(), mimetype="text/event-stream")
 
-# 학생 데이터 SSE (전체)
 @app.route('/get_all_student_data')
 def get_all_student_data():
     def event_stream():
         while True:
             time.sleep(2)  # 주기적으로 업데이트 (2초)
-            yield f"data: {json.dumps(students_data)}\n\n"  # JSON 형식으로 변환하여 전송
+            yield f"data: {json.dumps(students_data)}\n\n"  # 전체 학생 데이터 전송
     return Response(event_stream(), mimetype="text/event-stream")
 
-@app.route('/video_feed/<student_name>')
-def video_feed(student_name):
-    return Response(generate_frames(student_name, students_data),
-                    mimetype='multipart/x-mixed-replace; boundary=frame')
+@app.route('/upload_frame/<student_name>', methods=['POST'])
+def upload_frame(student_name):
+    try:
+        file = request.files['image'].read()
+        npimg = np.frombuffer(file, np.uint8)
+        frame = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
 
-# 선생님 페이지
+        # 이미지 처리
+        fr, sleep, yawn_count, processed_frame = process_frame(frame, student_name)
+
+        # 결과 저장
+        students_data[student_name] = {
+            'fr': fr,
+            'sleep': sleep,
+            'yawn_count': yawn_count
+        }
+        
+        return jsonify({'fr': fr, 'sleep': sleep, 'yawn_count': yawn_count})  # 추가된 데이터 반환
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+
+
 @app.route('/teacher')
 def teacher():
     return render_template('teacher_sse.html')
