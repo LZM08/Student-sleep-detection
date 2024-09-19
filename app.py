@@ -9,7 +9,6 @@ app = Flask(__name__)
 
 students_data = {}  # 학생들의 이름과 상태를 저장하는 딕셔너리
 
-
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -59,6 +58,10 @@ def upload_frame(student_name):
         npimg = np.frombuffer(file, np.uint8)
         frame = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
 
+        # 이미지가 올바르게 읽혔는지 확인
+        if frame is None:
+            return jsonify({'error': '이미지 읽기 실패'}), 400
+
         # 이미지 처리
         fr, sleep, yawn_count, processed_frame = process_frame(frame, student_name)
 
@@ -73,12 +76,9 @@ def upload_frame(student_name):
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
-
-
 @app.route('/teacher')
 def teacher():
     return render_template('teacher_sse.html')
 
-
 if __name__ == '__main__':
-    app.run(threaded=True, port=5000,host="0.0.0.0")
+    app.run(threaded=True, port=5000, host="0.0.0.0")

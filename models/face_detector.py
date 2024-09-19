@@ -5,13 +5,9 @@ from sklearn.metrics.pairwise import euclidean_distances
 from PIL import Image, ImageDraw, ImageFont
 import time
 
-# 글로벌 변수 초기화
-students_data = {}
-
 # 얼굴 감지기 및 랜드마크 예측기 초기화
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor("models/shape_predictor_68_face_landmarks.dat")
-
 
 # 텍스트 추가 함수
 def add_text(img, text, position, color=(0, 255, 10), size=30):
@@ -42,23 +38,24 @@ def mouth_ratio(shape):
     D = euclidean_distances(np.array(shape[48]), np.array(shape[54]))
     return ((A + B + C) / 3) / D
 
+
+students_data = {}
+
 # 학생 모니터링용 프레임 생성기
 def process_frame(frame, student_name):
-    global students_data  # 글로벌 변수를 사용
     fr = False
     sleep = False
     timer = 0
 
     # 학생의 하품 횟수 가져오기
-    if student_name not in students_data:
-        students_data[student_name] = {'yawn_count': 0}  # 초기화
-    yawn_count = students_data[student_name].get('yawn_count', 0)
+    yawn_count = students_data.get(student_name, {}).get('yawn_count', 0)
 
     # 얼굴 감지
     rects = detector(frame, 0)
     
     if len(rects) == 0:
         fr = False  # 얼굴이 감지되지 않음
+        print("얼굴 감지 실패")  # 디버깅 메시지
     else:
         fr = True  # 얼굴이 감지됨
         for rect in rects:
@@ -82,13 +79,11 @@ def process_frame(frame, student_name):
 
             if mar > 0.70:  # 하품 기준
                 yawn_count += 1  # 하품 감지
+                time.sleep(3)  # 잠시 대기 (하품 감지 후 지연)
 
             # 프레임에 텍스트 추가
             frame = add_text(frame, f"EAR: {ear[0][0]:.2f}", (10, 30))
             frame = add_text(frame, f"하품 횟수: {yawn_count}", (10, 60))
             frame = add_text(frame, f"졸음 상태: {'졸음' if sleep else '깨움'}", (10, 90))
-
-    # 하품 카운트를 업데이트
-    students_data[student_name]['yawn_count'] = yawn_count
 
     return fr, sleep, yawn_count, frame
