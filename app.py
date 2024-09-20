@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 from models.face_detector import process_frame  # 이 함수의 정의가 필요합니다.
 from flask_cors import CORS
-
+import base64
 
 app = Flask(__name__)
 CORS(app)
@@ -26,9 +26,10 @@ def student():
 def student_monitor(student_name):
     if student_name not in students_data:
         students_data[student_name] = {
-            'fr': True,
+            'fr': False,
             'sleep': False,
             'yawn_count': 0
+
         }
     return render_template('student_monitor.html', student_name=student_name)
 
@@ -49,9 +50,12 @@ def get_student_data(student_name):
 def get_all_student_data():
     def event_stream():
         while True:
-            time.sleep(2)  # 주기적으로 업데이트 (2초)
-            yield f"data: {json.dumps(students_data)}\n\n"  # 전체 학생 데이터 전송
+            time.sleep(2)  # 2초마다 업데이트
+            data_to_send = json.dumps(students_data)
+            print("Sending data:", data_to_send)  # 보내는 데이터 로그
+            yield f"data: {data_to_send}\n\n"
     return Response(event_stream(), mimetype="text/event-stream")
+
 
 @app.route('/upload_frame/<student_name>', methods=['POST'])
 def upload_frame(student_name):
@@ -75,13 +79,23 @@ def upload_frame(student_name):
             'yawn_count': yawn_count
         }
         
-        return jsonify({'fr': fr, 'sleep': sleep, 'yawn_count': yawn_count})  # 추가된 데이터 반환
+        _, buffer = cv2.imencode('.jpg', processed_frame)
+        processed_image = base64.b64encode(buffer).decode('utf-8')
+
+        return jsonify({
+            'fr': fr,
+            'sleep': sleep,
+            'yawn_count': yawn_count,
+            'processed_image': processed_image  # 처리된 이미지를 추가
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
 @app.route('/teacher')
 def teacher():
     return render_template('teacher_sse.html')
+
+
 
 if __name__ == '__main__':
     app.run(threaded=True, port=5000, host="0.0.0.0")

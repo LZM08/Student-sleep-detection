@@ -13,6 +13,7 @@
             const studentName = "{{ student_name }}";
             const statusElem = document.getElementById('status');
             const loadingElem = document.getElementById('loading');  // 로딩 메시지
+            const processedImageElem = document.getElementById('processed-image'); // 처리된 이미지 표시 영역
             loadingElem.style.display = 'block';  // 로딩 메시지 표시
 
             // 웹캠 시작
@@ -45,6 +46,11 @@
                                 // 서버에서 받은 결과 처리
                                 const statusMessage = data.fr ? '얼굴 인식 성공' : '얼굴 인식 실패';
                                 statusElem.textContent = statusMessage;
+
+                                // 처리된 이미지 표시
+                                if (data.processed_image) {
+                                    processedImageElem.src = 'data:image/jpeg;base64,' + data.processed_image;
+                                }
                             })
                             .catch(err => {
                                 loadingElem.style.display = 'none';  // 로딩 메시지 숨김
@@ -65,5 +71,6 @@
     <h1>{{ student_name }}님의 상태</h1>
     <p id="status">로딩 중...</p>
     <p id="loading" style="display:none;">처리 중...</p>  <!-- 로딩 메시지 -->
+    <img id="processed-image" alt="처리된 이미지" style="display: block; margin-top: 20px; max-width: 100%; height: auto;" /> <!-- 처리된 이미지 표시 -->
 </body>
 </html>

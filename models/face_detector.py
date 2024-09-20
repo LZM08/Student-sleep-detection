@@ -43,12 +43,12 @@ students_data = {}
 
 # 학생 모니터링용 프레임 생성기
 def process_frame(frame, student_name):
+    # 학생 상태 정보 가져오기
+    student_info = students_data.get(student_name, {'yawn_count': 0, 'timer': 0})
+    yawn_count = student_info['yawn_count']
+    timer = student_info['timer']  # 기존 타이머 값 가져오기
     fr = False
     sleep = False
-    timer = 0
-
-    # 학생의 하품 횟수 가져오기
-    yawn_count = students_data.get(student_name, {}).get('yawn_count', 0)
 
     # 얼굴 감지
     rects = detector(frame, 0)
@@ -76,6 +76,7 @@ def process_frame(frame, student_name):
                     sleep = True  # 졸음 상태
             else:
                 timer = 0
+                sleep = False  # 졸음 상태 초기화
 
             if mar > 0.70:  # 하품 기준
                 yawn_count += 1  # 하품 감지
@@ -86,4 +87,13 @@ def process_frame(frame, student_name):
             frame = add_text(frame, f"하품 횟수: {yawn_count}", (10, 60))
             frame = add_text(frame, f"졸음 상태: {'졸음' if sleep else '깨움'}", (10, 90))
 
+    # 학생 데이터 업데이트
+    students_data[student_name] = {
+        'fr': fr,
+        'sleep': sleep,
+        'yawn_count': yawn_count,
+        'timer': timer  # 타이머 값도 저장
+    }
+
     return fr, sleep, yawn_count, frame
+

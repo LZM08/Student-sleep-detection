@@ -5,53 +5,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>선생님 페이지 - 실시간</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-        }
-        h1 {
-            color: #333;
-        }
-        ul {
-            list-style-type: none;
-            padding: 0;
-        }
-        li {
-            background: #f0f0f0;
-            margin: 5px 0;
-            padding: 10px;
-            border-radius: 5px;
-        }
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        h1 { color: #333; }
+        ul { list-style-type: none; padding: 0; }
+        li { background: #f0f0f0; margin: 5px 0; padding: 10px; border-radius: 5px; }
     </style>
     <script>
-        document.addEventListener('DOMContentLoaded', (event) => {
-            // 서버-발송 이벤트(SSE)를 사용하여 실시간 데이터 수신
+        document.addEventListener('DOMContentLoaded', () => {
             const eventSource = new EventSource('/get_all_student_data');
-
             eventSource.onmessage = function(event) {
-                console.log("Received data:", event.data);  // 디버깅을 위한 콘솔 로그
-                // 학생 데이터 업데이트
-                const studentsData = JSON.parse(event.data);  // JSON 형식으로 데이터 파싱
+                const studentsData = JSON.parse(event.data);
                 let studentList = '';
                 for (const [student, details] of Object.entries(studentsData)) {
-                    // 얼굴 인식 여부 확인
                     const faceRecognition = details.fr !== undefined ? details.fr : false;
                     const sleepStatus = faceRecognition ? (details.sleep ? '졸음' : '깨움') : '인식 불가';
                     studentList += `<li>${student} - 얼굴 인식: ${faceRecognition}, 수면 상태: ${sleepStatus}, 하품 횟수: ${details.yawn_count}</li>`;
                 }
-                document.getElementById('student_data').innerHTML = studentList;  // 데이터를 HTML에 업데이트
+                document.getElementById('student_data').innerHTML = studentList;
             };
-
             eventSource.onerror = function(event) {
-                console.error("SSE Error:", event);  // 오류 로그
+                console.error("SSE Error:", event);
             };
         });
     </script>
 </head>
 <body>
     <h1>학생 모니터링 상태</h1>
-    <ul id="student_data">
-        <!-- 학생 데이터가 여기에 실시간으로 표시됩니다 -->
-    </ul>
+    <ul id="student_data"></ul>
 </body>
 </html>
