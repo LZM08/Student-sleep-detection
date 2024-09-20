@@ -7,6 +7,8 @@ from models.face_detector import process_frame  # 이 함수의 정의가 필요
 from flask_cors import CORS
 import base64
 
+#
+
 app = Flask(__name__)
 CORS(app)
 students_data = {}  # 학생들의 이름과 상태를 저장하는 딕셔너리

@@ -5,3 +5,8 @@ scikit-learn
 Pillow
 numpy
 gunicorn
+gevent
+Flask-CORS
+Flask-SocketIO
+pytest
+opencv-python-headless
