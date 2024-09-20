@@ -50,14 +50,21 @@ def process_frame(frame, student_name):
     fr = False
     sleep = False
 
+    # 디버깅: 입력 프레임 크기 출력
+    print("입력 프레임 크기:", frame.shape)
+
     # 얼굴 감지
     rects = detector(frame, 0)
     
+    # 얼굴 감지 시도 로그
+    print("얼굴 감지 시도 중...")
     if len(rects) == 0:
         fr = False  # 얼굴이 감지되지 않음
         print("얼굴 감지 실패")  # 디버깅 메시지
     else:
         fr = True  # 얼굴이 감지됨
+        print(f"얼굴 감지 성공: {len(rects)}개 얼굴")
+
         for rect in rects:
             shape = predictor(frame, rect)  # 얼굴 랜드마크 추출
             shape = np.matrix([[p.x, p.y] for p in shape.parts()])  # 좌표 변환
@@ -70,16 +77,20 @@ def process_frame(frame, student_name):
             ear = (left_ear + right_ear) / 2.0  # 평균 눈 비율
 
             # 졸음 및 하품 감지 로직
+            print(f"EAR: {ear[0][0]:.2f}, MAR: {mar:.2f}, 현재 하품 횟수: {yawn_count}, 타이머: {timer}")
+
             if ear < 0.3:  # EAR 기준
                 timer += 1
                 if timer >= 50:  # 50 프레임 이상 졸음 감지
                     sleep = True  # 졸음 상태
+                    print("졸음 감지")
             else:
                 timer = 0
                 sleep = False  # 졸음 상태 초기화
 
             if mar > 0.70:  # 하품 기준
                 yawn_count += 1  # 하품 감지
+                print("하품 감지")
                 time.sleep(3)  # 잠시 대기 (하품 감지 후 지연)
 
             # 프레임에 텍스트 추가
@@ -94,6 +105,9 @@ def process_frame(frame, student_name):
         'yawn_count': yawn_count,
         'timer': timer  # 타이머 값도 저장
     }
+
+    # 최종 상태 로그
+    print(f"학생: {student_name}, 얼굴 감지: {fr}, 졸음 상태: {sleep}, 하품 횟수: {yawn_count}, 타이머: {timer}")
 
     return fr, sleep, yawn_count, frame
 
