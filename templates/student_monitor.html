@@ -4,8 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>학생 모니터링</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.min.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', (event) => {
+        const socket = io();
+
+        document.addEventListener('DOMContentLoaded', () => {
             const video = document.createElement('video');
             video.id = 'videoElement';
             const canvas = document.createElement('canvas');
@@ -24,51 +27,42 @@
                         canvas.height = video.videoHeight;
                         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-                        // 캡처된 이미지를 서버로 전송
+                        // 캡처된 이미지를 base64로 변환하여 서버로 전송
                         canvas.toBlob(blob => {
                             if (blob) {
-                                const formData = new FormData();
-                                formData.append('image', blob, 'frame.jpg');
-
-                                fetch(`/upload_frame/${studentName}`, {
-                                    method: 'POST',
-                                    body: formData
-                                })
-                                .then(response => response.json())
-                                .then(data => {
-                                    console.log("서버로부터 받은 데이터:", data);
-                                    // 얼굴 인식 상태 표시
-                                    const statusMessage = data.fr ? 
-                                        '얼굴 인식 성공' : 
-                                        '얼굴 인식 실패';
-                                    document.getElementById('status').textContent = statusMessage;
-
-                                    // 졸음 상태 표시
-                                    const sleepMessage = data.sleep ? 
-                                        '졸음 상태' : 
-                                        '깨운 상태';
-                                    document.getElementById('sleep-status').textContent = sleepMessage;
-
-                                    // 하품 횟수 표시
-                                    document.getElementById('yawn-count').textContent = `하품 횟수: ${data.yawn_count}`;
-                                })
-                                .catch(err => {
-                                    console.error('Error:', err);
-                                });
+                                const reader = new FileReader();
+                                reader.onloadend = () => {
+                                    const base64data = reader.result.split(',')[1];
+                                    socket.emit('image', { image: base64data, student_name: studentName });
+                                };
+                                reader.readAsDataURL(blob);
                             }
                         });
                     }, 2000); // 2초마다 이미지 전송
                 })
                 .catch(err => {
                     console.error('Error accessing webcam:', err);
+                    document.getElementById('status').textContent = '웹캠 접근 오류';
                 });
-            
-            // SSE로 학생 데이터 수신
-            const eventSource = new EventSource(`/get_student_data/${studentName}`);
-            eventSource.onmessage = function(event) {
-                const studentData = JSON.parse(event.data);
-                // 필요시 학생 데이터도 업데이트 가능
-            };
+
+            // 서버 응답 수신
+            socket.on('response', (data) => {
+                console.log("서버로부터 받은 데이터:", data);
+                // 얼굴 인식 상태 표시
+                const statusMessage = data.fr ? 
+                    '얼굴 인식 성공' : 
+                    '얼굴 인식 실패';
+                document.getElementById('status').textContent = statusMessage;
+
+                // 졸음 상태 표시
+                const sleepMessage = data.sleep ? 
+                    '졸음 상태' : 
+                    '깨운 상태';
+                document.getElementById('sleep-status').textContent = sleepMessage;
+
+                // 하품 횟수 표시
+                document.getElementById('yawn-count').textContent = `하품 횟수: ${data.yawn_count}`;
+            });
         });
     </script>
 </head>
