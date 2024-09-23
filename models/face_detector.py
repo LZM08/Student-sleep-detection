@@ -7,7 +7,7 @@ import time
 
 # 얼굴 감지기 및 랜드마크 예측기 초기화
 detector = dlib.get_frontal_face_detector()
-predictor = dlib.shape_predictor("models/shape_predictor_68_face_landmarks.dat")
+predictor = dlib.shape_predictor("Student-sleep-detection\models\shape_predictor_68_face_landmarks.dat")
 
 # 텍스트 추가 함수
 def add_text(img, text, position, color=(0, 255, 10), size=30):
@@ -43,12 +43,14 @@ students_data = {}
 
 # 학생 모니터링용 프레임 생성기
 def process_frame(frame, student_name):
+    fr = None
+    sleep = None
+
     # 학생 상태 정보 가져오기
     student_info = students_data.get(student_name, {'yawn_count': 0, 'timer': 0})
     yawn_count = student_info['yawn_count']
     timer = student_info['timer']  # 기존 타이머 값 가져오기
-    fr = False
-    sleep = False
+
 
     # 디버깅: 입력 프레임 크기 출력
     print("입력 프레임 크기:", frame.shape)
@@ -111,3 +113,4 @@ def process_frame(frame, student_name):
 
     return fr, sleep, yawn_count, frame
 
+    

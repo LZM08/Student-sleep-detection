@@ -7,23 +7,16 @@
     <script>
         document.addEventListener('DOMContentLoaded', (event) => {
             const video = document.createElement('video');
-            video.id = 'videoElement';  // 비디오 ID 추가
+            video.id = 'videoElement';
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
             const studentName = "{{ student_name }}";
-            const statusElem = document.getElementById('status');
-            const loadingElem = document.getElementById('loading');  // 로딩 메시지
-            const processedImageElem = document.getElementById('processed-image'); // 처리된 이미지 표시 영역
-            loadingElem.style.display = 'block';  // 로딩 메시지 표시
 
             // 웹캠 시작
             navigator.mediaDevices.getUserMedia({ video: true })
                 .then(stream => {
                     video.srcObject = stream;
-                    video.play().catch(err => {
-                        console.error('Error playing video:', err);
-                        statusElem.textContent = '비디오 재생 오류';
-                    });
+                    video.play();
 
                     // 주기적으로 이미지를 서버로 전송
                     setInterval(() => {
@@ -33,44 +26,57 @@
 
                         // 캡처된 이미지를 서버로 전송
                         canvas.toBlob(blob => {
-                            const formData = new FormData();
-                            formData.append('image', blob, 'frame.jpg');
+                            if (blob) {
+                                const formData = new FormData();
+                                formData.append('image', blob, 'frame.jpg');
 
-                            fetch(`/upload_frame/${studentName}`, {
-                                method: 'POST',
-                                body: formData
-                            })
-                            .then(response => response.json())
-                            .then(data => {
-                                loadingElem.style.display = 'none';  // 로딩 메시지 숨김
-                                // 서버에서 받은 결과 처리
-                                const statusMessage = data.fr ? '얼굴 인식 성공' : '얼굴 인식 실패';
-                                statusElem.textContent = statusMessage;
+                                fetch(`/upload_frame/${studentName}`, {
+                                    method: 'POST',
+                                    body: formData
+                                })
+                                .then(response => response.json())
+                                .then(data => {
+                                    console.log("서버로부터 받은 데이터:", data);
+                                    // 얼굴 인식 상태 표시
+                                    const statusMessage = data.fr ? 
+                                        '얼굴 인식 성공' : 
+                                        '얼굴 인식 실패';
+                                    document.getElementById('status').textContent = statusMessage;
 
-                                // 처리된 이미지 표시
-                                if (data.processed_image) {
-                                    processedImageElem.src = 'data:image/jpeg;base64,' + data.processed_image;
-                                }
-                            })
-                            .catch(err => {
-                                loadingElem.style.display = 'none';  // 로딩 메시지 숨김
-                                console.error('Error:', err);
-                                statusElem.textContent = '서버 통신 오류';
-                            });
+                                    // 졸음 상태 표시
+                                    const sleepMessage = data.sleep ? 
+                                        '졸음 상태' : 
+                                        '깨운 상태';
+                                    document.getElementById('sleep-status').textContent = sleepMessage;
+
+                                    // 하품 횟수 표시
+                                    document.getElementById('yawn-count').textContent = `하품 횟수: ${data.yawn_count}`;
+                                })
+                                .catch(err => {
+                                    console.error('Error:', err);
+                                });
+                            }
                         });
-                    }, 1000); // 1초마다 이미지 전송
+                    }, 2000); // 2초마다 이미지 전송
                 })
                 .catch(err => {
                     console.error('Error accessing webcam:', err);
-                    statusElem.textContent = '웹캠 접근 오류';
                 });
+            
+            // SSE로 학생 데이터 수신
+            const eventSource = new EventSource(`/get_student_data/${studentName}`);
+            eventSource.onmessage = function(event) {
+                const studentData = JSON.parse(event.data);
+                // 필요시 학생 데이터도 업데이트 가능
+            };
         });
     </script>
 </head>
 <body>
     <h1>{{ student_name }}님의 상태</h1>
     <p id="status">로딩 중...</p>
-    <p id="loading" style="display:none;">처리 중...</p>  <!-- 로딩 메시지 -->
-    <img id="processed-image" alt="처리된 이미지" style="display: block; margin-top: 20px; max-width: 100%; height: auto;" /> <!-- 처리된 이미지 표시 -->
+    <p id="sleep-status">로딩 중...</p>
+    <p id="yawn-count">하품 횟수: 0</p>
+    <video id="videoElement" autoplay playsinline style="display: none;"></video>
 </body>
 </html>
