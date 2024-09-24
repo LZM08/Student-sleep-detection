@@ -11,7 +11,7 @@ from flask_socketio import SocketIO, emit
 
 # 얼굴 감지기 및 랜드마크 예측기 초기화
 detector = dlib.get_frontal_face_detector()
-predictor = dlib.shape_predictor(r"Student-sleep-detection\models\shape_predictor_68_face_landmarks.dat")
+predictor = dlib.shape_predictor("models\shape_predictor_68_face_landmarks.dat")
 
 app = Flask(__name__)
 socketio = SocketIO(app)
@@ -48,8 +48,8 @@ def process_frame(frame, student_name):
     fr = None
     sleep = None
     yawn_count = 0
-    timer = 0
 
+    # 이미 저장된 학생의 정보를 불러옴 (초기화가 아닌, 유지된 값 사용)
     student_info = students_data.get(student_name, {'yawn_count': 0, 'timer': 0})
     yawn_count = student_info['yawn_count']
     timer = student_info['timer']
@@ -71,26 +71,30 @@ def process_frame(frame, student_name):
             left_ear = eye_ratio(left_eye)
             ear = (left_ear + right_ear) / 2.0
 
+            # 눈 비율이 기준치보다 낮을 경우
             if ear < 0.3:
                 timer += 1
-                if timer >= 50:
+                if timer >= 50:  # 타이머가 50 이상이면 졸음 상태로 간주
                     sleep = True
             else:
-                timer = 0
+                timer = 0  # 눈을 떴을 때 타이머 초기화
                 sleep = False
 
+            # 하품 비율이 기준치를 넘으면 하품 카운트 증가
             if mar > 0.70:
                 yawn_count += 1
-                time.sleep(3)
+                time.sleep(3)  # 하품 후 약간의 대기 시간을 줌
 
+    # 학생 정보 업데이트 (timer가 유지되도록 함)
     students_data[student_name] = {
         'fr': fr,
         'sleep': sleep if sleep is not None else False,
         'yawn_count': yawn_count,
-        'timer': timer
+        'timer': timer  # 현재 상태의 timer 값을 그대로 저장
     }
 
     return fr, students_data[student_name]['sleep'], yawn_count, timer
+
 
 @app.route('/')
 def index():
@@ -107,7 +111,7 @@ def student():
 def get_all_student_data():
     def event_stream():
         while True:
-            time.sleep(2)  # 2초마다 업데이트
+            time.sleep(0.1)  # 2초마다 업데이트
             data_to_send = json.dumps(students_data)
             print("Sending data:", data_to_send)  # 보내는 데이터 로그
             yield f"data: {data_to_send}\n\n"
