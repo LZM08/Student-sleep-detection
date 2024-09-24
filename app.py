@@ -11,7 +11,7 @@ from flask_socketio import SocketIO, emit
 
 # 얼굴 감지기 및 랜드마크 예측기 초기화
 detector = dlib.get_frontal_face_detector()
-predictor = dlib.shape_predictor("models\shape_predictor_68_face_landmarks.dat")
+predictor = dlib.shape_predictor("models/shape_predictor_68_face_landmarks.dat")
 
 app = Flask(__name__)
 socketio = SocketIO(app)
