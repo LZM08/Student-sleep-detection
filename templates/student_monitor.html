@@ -39,7 +39,7 @@
                                 reader.readAsDataURL(blob);
                             }
                         });
-                    }, 1000); // 2초마다 이미지 전송
+                    }, 200); // 2초마다 이미지 전송
                 })
                 .catch(err => {
                     console.error('웹캠 접근 오류:', err);

@@ -72,9 +72,9 @@ def process_frame(frame, student_name):
             ear = (left_ear + right_ear) / 2.0
 
             # 눈 비율이 기준치보다 낮을 경우
-            if ear < 0.3:
+            if ear < 0.23:
                 timer += 1
-                if timer >= 50:  # 타이머가 50 이상이면 졸음 상태로 간주
+                if timer >= 20:  # 타이머가 50 이상이면 졸음 상태로 간주
                     sleep = True
             else:
                 timer = 0  # 눈을 떴을 때 타이머 초기화
@@ -111,7 +111,7 @@ def student():
 def get_all_student_data():
     def event_stream():
         while True:
-            time.sleep(1)  # 2초마다 업데이트
+            time.sleep(0.2)  # 2초마다 업데이트
             data_to_send = json.dumps(students_data)
             print("Sending data:", data_to_send)  # 보내는 데이터 로그
             yield f"data: {data_to_send}\n\n"
@@ -133,7 +133,7 @@ def student_monitor(student_name):
 def get_student_data(student_name):
     def event_stream():
         while True:
-            time.sleep(1)
+            time.sleep(0.2)
             student_data = students_data.get(student_name, {
                 'fr': False,
                 'sleep': None,
@@ -142,6 +142,7 @@ def get_student_data(student_name):
             })
             yield f"data: {json.dumps(student_data)}\n\n"
     return Response(event_stream(), mimetype="text/event-stream")
+
 
 @socketio.on('image')
 def handle_image(data):

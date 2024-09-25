@@ -71,7 +71,7 @@ while True:
             ear = (left_ear + right_ear) / 2.0
             
             # 눈이 감긴 경우
-            if ear < 0.3 and mar < 0.5:
+            if ear < 0.23 and mar < 0.5:
                 timer += 1
                 if timer >= 50:
                     frame = add_text(frame, "wake up!!!", (250, 250))
