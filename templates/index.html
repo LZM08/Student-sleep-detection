@@ -3,11 +3,73 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>학생 감시 시스템</title>
+    <title>학생 상태 확인 시스템</title>
+    <style>
+        /* 배경 그라데이션과 중앙 정렬 */
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #6e8efb, #a777e3);
+            font-family: 'Arial', sans-serif;
+            color: #fff;
+        }
+
+        /* 중앙 박스 스타일 */
+        .container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 50px;
+            border-radius: 15px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        /* 헤딩 스타일 */
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            letter-spacing: 2px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        /* 버튼 기본 스타일 */
+        button {
+            padding: 15px 40px;
+            font-size: 1.2em;
+            color: #fff;
+            background: linear-gradient(135deg, #43e97b, #38f9d7);
+            border: none;
+            border-radius: 50px;
+            margin: 10px;
+            cursor: pointer;
+            transition: transform 0.2s ease-in-out, background 0.3s ease;
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 버튼 호버 스타일 */
+        button:hover {
+            transform: translateY(-5px);
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            box-shadow: 0 15px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        /* 버튼 클릭 애니메이션 */
+        button:active {
+            transform: translateY(0);
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+        }
+    </style>
 </head>
 <body>
-    <h1>학생 상태 확인 시스템</h1>
-    <button onclick="window.location.href='/student'">학생</button>
-    <button onclick="window.location.href='/teacher'">선생님</button>
+    <div class="container">
+        <h1>학생 상태 확인 시스템</h1>
+        <button onclick="window.location.href='/student'">학생</button>
+        <button onclick="window.location.href='/teacher'">선생님</button>
+    </div>
 </body>
 </html>

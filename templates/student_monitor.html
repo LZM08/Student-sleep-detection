@@ -4,33 +4,108 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>학생 모니터링</title>
+    <style>
+        /* 배경 그라데이션 및 폰트 설정 */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Roboto', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #fff;
+        }
+
+        /* 중앙 컨테이너 스타일 */
+        .container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            width: 80%;
+            max-width: 600px;
+        }
+
+        /* 상태 제목 */
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        /* 상태 표시 텍스트 */
+        p {
+            font-size: 1.2em;
+            margin: 10px 0;
+            background: rgba(0, 0, 0, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: background 0.3s ease;
+        }
+
+        /* 하품 횟수 강조 */
+        #yawn-count {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #f7ff00;
+            text-shadow: 1px 1px 5px rgba(0, 0, 0, 0.4);
+        }
+
+        /* 얼굴 인식, 졸음 상태 메시지 스타일 */
+        #status {
+            color: #00ff88;
+        }
+        #sleep-status {
+            color: #ff3355;
+        }
+
+        /* 비디오 숨김 스타일 */
+        video {
+            display: none;
+        }
+
+        /* 추가 애니메이션 효과 */
+        p.fade-in {
+            animation: fadeIn 1s ease-in-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+    </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.min.js"></script>
     <script>
         const socket = io();
 
         document.addEventListener('DOMContentLoaded', () => {
             const video = document.createElement('video');
-            video.id = 'videoElement';
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
             const studentName = "{{ student_name }}";
 
-            // 웹캠 시작
             // 웹캠 시작
             navigator.mediaDevices.getUserMedia({ video: true })
                 .then(stream => {
                     video.srcObject = stream;
                     video.play();
 
-        // 주기적으로 이미지를 서버로 전송
                     setInterval(() => {
                         canvas.width = video.videoWidth;
                         canvas.height = video.videoHeight;
                         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            // 캡처된 이미지를 base64로 변환하여 서버로 전송
                         canvas.toBlob(blob => {
-                                if (blob) {
+                            if (blob) {
                                 const reader = new FileReader();
                                 reader.onloadend = () => {
                                     const base64data = reader.result.split(',')[1];
@@ -39,49 +114,36 @@
                                 reader.readAsDataURL(blob);
                             }
                         });
-                    }, 200); // 2초마다 이미지 전송
+                    }, 500); // 2초마다 이미지 전송
                 })
                 .catch(err => {
                     console.error('웹캠 접근 오류:', err);
                     document.getElementById('status').textContent = '웹캠 접근 오류. 권한을 허용해주세요.';
-
-                    // 권한 문제일 경우 추가 안내 제공
-                    if (err.name === 'NotAllowedError') {
-                        alert("카메라 권한이 허용되지 않았습니다. 브라우저 설정에서 카메라 접근을 허용해주세요.");
-                    } else if (err.name === 'NotFoundError') {
-                        alert("카메라를 찾을 수 없습니다. 카메라가 연결되어 있는지 확인해주세요.");
-                    } else {
-                        alert("웹캠 접근에 문제가 발생했습니다. 다시 시도해주세요.");
-                    }
                 });
-
 
             // 서버 응답 수신
             socket.on('response', (data) => {
                 console.log("서버로부터 받은 데이터:", data);
-                // 얼굴 인식 상태 표시
-                const statusMessage = data.fr ? 
-                    '얼굴 인식 성공' : 
-                    '얼굴 인식 실패';
+                
+                const statusMessage = data.fr ? '얼굴 인식 성공' : '얼굴 인식 실패';
+                const sleepMessage = data.sleep ? '졸음 상태' : '깨운 상태';
+
                 document.getElementById('status').textContent = statusMessage;
-
-                // 졸음 상태 표시
-                const sleepMessage = data.sleep ? 
-                    '졸음 상태' : 
-                    '깨운 상태';
                 document.getElementById('sleep-status').textContent = sleepMessage;
-
-                // 하품 횟수 표시
                 document.getElementById('yawn-count').textContent = `하품 횟수: ${data.yawn_count}`;
+
+                document.querySelectorAll('p').forEach(p => p.classList.add('fade-in'));
             });
         });
     </script>
 </head>
 <body>
-    <h1>{{ student_name }}님의 상태</h1>
-    <p id="status">로딩 중...</p>
-    <p id="sleep-status">로딩 중...</p>
-    <p id="yawn-count">하품 횟수: 0</p>
-    <video id="videoElement" autoplay playsinline style="display: none;"></video>
+    <div class="container">
+        <h1>{{ student_name }}님의 상태</h1>
+        <p id="status">로딩 중...</p>
+        <p id="sleep-status">로딩 중...</p>
+        <p id="yawn-count">하품 횟수: 0</p>
+        <video id="videoElement" autoplay playsinline></video>
+    </div>
 </body>
 </html>

@@ -5,32 +5,164 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>선생님 페이지 - 실시간</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        h1 { color: #333; }
-        ul { list-style-type: none; padding: 0; }
-        li { background: #f0f0f0; margin: 5px 0; padding: 10px; border-radius: 5px; }
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to right, #74ebd5, #9face6);
+            color: #fff;
+            text-align: center;
+        }
+        
+        h1 {
+            color: #fff;
+            margin: 30px 0;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.4);
+        }
+
+        table {
+            width: 80%;
+            margin: 20px auto;
+            border-collapse: collapse;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        th {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 15px;
+            font-size: 1.2em;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        td {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+            font-size: 1.1em;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        tr:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        button {
+            background-color: #f39c12;
+            color: #fff;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 25px;
+            font-size: 1.2em;
+            margin-top: 20px;
+            cursor: pointer;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0px 6px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        button:active {
+            transform: translateY(1px);
+            box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.2);
+        }
     </style>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const eventSource = new EventSource('/get_all_student_data');
+            const timers = {};
+            let studentData = {};  
+
             eventSource.onmessage = function(event) {
-                const studentsData = JSON.parse(event.data);
+                studentData = JSON.parse(event.data);
                 let studentList = '';
-                for (const [student, details] of Object.entries(studentsData)) {
+
+                for (const [student, details] of Object.entries(studentData)) {
                     const faceRecognition = details.fr !== undefined ? details.fr : false;
+                    const faceRecognitionStatus = faceRecognition ? '성공' : '실패';
                     const sleepStatus = faceRecognition ? (details.sleep ? '졸음' : '깨움') : '인식 불가';
-                    studentList += `<li>${student} - 얼굴 인식: ${faceRecognition}, 수면 상태: ${sleepStatus}, 하품 횟수: ${details.yawn_count}</li>`;
+
+                    if (!timers[student]) {
+                        timers[student] = { startTime: null, totalTime: 0 };
+                    }
+
+                    if (details.sleep && !timers[student].startTime) {
+                        timers[student].startTime = Date.now();
+                    } else if (!details.sleep && timers[student].startTime) {
+                        timers[student].totalTime += (Date.now() - timers[student].startTime) / 1000;
+                        timers[student].startTime = null;
+                    }
+
+                    let elapsedTime = timers[student].totalTime;
+                    if (timers[student].startTime) {
+                        elapsedTime += (Date.now() - timers[student].startTime) / 1000;
+                    }
+
+                    const minutes = Math.floor(elapsedTime / 60);
+                    const seconds = Math.floor(elapsedTime % 60);
+                    const formattedTime = `${minutes}분 ${seconds}초`;
+
+                    studentList += `<tr>
+                        <td>${student}</td>
+                        <td>${faceRecognitionStatus}</td>
+                        <td>${sleepStatus}</td>
+                        <td>${details.yawn_count}</td>
+                        <td>${formattedTime}</td>
+                    </tr>`;
                 }
                 document.getElementById('student_data').innerHTML = studentList;
             };
+
             eventSource.onerror = function(event) {
                 console.error("SSE Error:", event);
             };
+
+            document.getElementById('reset_timer').addEventListener('click', () => {
+                for (const student in timers) {
+                    timers[student].startTime = null;
+                    timers[student].totalTime = 0;
+
+                    if (studentData[student]) {
+                        studentData[student].yawn_count = 0;
+                    }
+                }
+
+                let studentList = '';
+                for (const [student, details] of Object.entries(studentData)) {
+                    studentList += `<tr>
+                        <td>${student}</td>
+                        <td>얼굴 인식 실패</td>
+                        <td>인식 불가</td>
+                        <td>0</td>
+                        <td>0분 0초</td>
+                    </tr>`;
+                }
+                document.getElementById('student_data').innerHTML = studentList;
+
+                alert('타이머와 하품 횟수가 초기화되었습니다.');
+            });
         });
     </script>
 </head>
 <body>
     <h1>학생 모니터링 상태</h1>
-    <ul id="student_data"></ul>
+    <table>
+        <thead>
+            <tr>
+                <th>학생 이름</th>
+                <th>얼굴 인식</th>
+                <th>수면 상태</th>
+                <th>하품 횟수</th>
+                <th>경과 시간</th>
+            </tr>
+        </thead>
+        <tbody id="student_data"></tbody>
+    </table>
+    <button id="reset_timer">수업 시작</button>
 </body>
 </html>

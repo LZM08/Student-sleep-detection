@@ -18,7 +18,7 @@ socketio = SocketIO(app)
 
 students_data = {}
 
-# 텍스트 추가 함수
+
 def add_text(img, text, position, color=(0, 255, 10), size=30):
     if isinstance(img, np.ndarray):
         img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
@@ -30,12 +30,14 @@ def add_text(img, text, position, color=(0, 255, 10), size=30):
     draw.text(position, text, color, font=font)
     return cv2.cvtColor(np.asarray(img), cv2.COLOR_RGB2BGR)
 
+
 # 비율 계산 함수
 def eye_ratio(eye):
     A = euclidean_distances(np.array(eye[1]), np.array(eye[5]))
     B = euclidean_distances(np.array(eye[2]), np.array(eye[4]))
     C = euclidean_distances(np.array(eye[0]), np.array(eye[3]))
     return ((A + B) / 2.0) / C
+
 
 def mouth_ratio(shape):
     A = euclidean_distances(np.array(shape[50]), np.array(shape[58]))
@@ -44,12 +46,11 @@ def mouth_ratio(shape):
     D = euclidean_distances(np.array(shape[48]), np.array(shape[54]))
     return ((A + B + C) / 3) / D
 
+
 def process_frame(frame, student_name):
     fr = None
     sleep = None
     yawn_count = 0
-
-    # 이미 저장된 학생의 정보를 불러옴 (초기화가 아닌, 유지된 값 사용)
     student_info = students_data.get(student_name, {'yawn_count': 0, 'timer': 0})
     yawn_count = student_info['yawn_count']
     timer = student_info['timer']
@@ -97,7 +98,7 @@ def process_frame(frame, student_name):
 
 
 @app.route('/')
-def index():
+def index():    
     return render_template('index.html')
 
 @app.route('/student', methods=['GET', 'POST'])
@@ -111,9 +112,9 @@ def student():
 def get_all_student_data():
     def event_stream():
         while True:
-            time.sleep(0.2)  # 2초마다 업데이트
+            time.sleep(0.5) 
             data_to_send = json.dumps(students_data)
-            print("Sending data:", data_to_send)  # 보내는 데이터 로그
+            # print("Sending data:", data_to_send)
             yield f"data: {data_to_send}\n\n"
     return Response(event_stream(), mimetype="text/event-stream")
 
@@ -133,7 +134,7 @@ def student_monitor(student_name):
 def get_student_data(student_name):
     def event_stream():
         while True:
-            time.sleep(0.2)
+            time.sleep(0.5)
             student_data = students_data.get(student_name, {
                 'fr': False,
                 'sleep': None,
