@@ -111,7 +111,7 @@ def student():
 def get_all_student_data():
     def event_stream():
         while True:
-            time.sleep(0.1)  # 2초마다 업데이트
+            time.sleep(1)  # 2초마다 업데이트
             data_to_send = json.dumps(students_data)
             print("Sending data:", data_to_send)  # 보내는 데이터 로그
             yield f"data: {data_to_send}\n\n"
@@ -133,7 +133,7 @@ def student_monitor(student_name):
 def get_student_data(student_name):
     def event_stream():
         while True:
-            time.sleep(2)
+            time.sleep(1)
             student_data = students_data.get(student_name, {
                 'fr': False,
                 'sleep': None,

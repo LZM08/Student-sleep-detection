@@ -45,7 +45,7 @@ yawn_count = 0  # 하품 횟수 카운터
 stop = 0
 # 얼굴 감지기 및 랜드마크 예측기 초기화
 detector = dlib.get_frontal_face_detector()
-predictor = dlib.shape_predictor("Student-sleep-detection\models\shape_predictor_68_face_landmarks.dat")
+predictor = dlib.shape_predictor("models\shape_predictor_68_face_landmarks.dat")
 
 # 비디오 캡처
 cap = cv2.VideoCapture(0)

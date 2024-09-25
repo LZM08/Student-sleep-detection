@@ -30,7 +30,7 @@
 
             // 캡처된 이미지를 base64로 변환하여 서버로 전송
                         canvas.toBlob(blob => {
-                            if (blob) {
+                                if (blob) {
                                 const reader = new FileReader();
                                 reader.onloadend = () => {
                                     const base64data = reader.result.split(',')[1];
@@ -39,7 +39,7 @@
                                 reader.readAsDataURL(blob);
                             }
                         });
-                    }, 100); // 2초마다 이미지 전송
+                    }, 1000); // 2초마다 이미지 전송
                 })
                 .catch(err => {
                     console.error('웹캠 접근 오류:', err);

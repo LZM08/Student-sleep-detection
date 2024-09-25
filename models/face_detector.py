@@ -5,6 +5,8 @@ from sklearn.metrics.pairwise import euclidean_distances
 from PIL import Image, ImageDraw, ImageFont
 import time
 
+#https://visualstudio.microsoft.com/ko/visual-cpp-build-tools/
+
 # 얼굴 감지기 및 랜드마크 예측기 초기화
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor("Student-sleep-detection\models\shape_predictor_68_face_landmarks.dat")
