@@ -8,6 +8,7 @@ import dlib
 from sklearn.metrics.pairwise import euclidean_distances
 from PIL import Image, ImageDraw, ImageFont
 from flask_socketio import SocketIO, emit
+import threading
 
 # 얼굴 감지기 및 랜드마크 예측기 초기화
 detector = dlib.get_frontal_face_detector()
@@ -17,7 +18,28 @@ app = Flask(__name__)
 socketio = SocketIO(app)
 
 students_data = {}
+timeout_threshold = 10  # 마지막 업데이트 후 10초 지나면 삭제
 
+# 학생 데이터를 주기적으로 체크해 오래된 데이터 삭제하는 함수
+def cleanup_old_students():
+    while True:
+        time.sleep(5)  # 5초마다 검사
+        current_time = time.time()
+        students_to_delete = []
+
+        for student_name, data in students_data.items():
+            # 마지막 업데이트가 timeout_threshold 이상 차이 나면 삭제 대상에 추가
+            if current_time - data['last_update'] > timeout_threshold:
+                students_to_delete.append(student_name)
+
+        for student_name in students_to_delete:
+            del students_data[student_name]
+            print(f"학생 데이터 삭제됨: {student_name}")
+
+# 백그라운드에서 데이터 정리 스레드 실행
+cleanup_thread = threading.Thread(target=cleanup_old_students)
+cleanup_thread.daemon = True
+cleanup_thread.start()
 
 def add_text(img, text, position, color=(0, 255, 10), size=30):
     if isinstance(img, np.ndarray):
@@ -30,14 +52,11 @@ def add_text(img, text, position, color=(0, 255, 10), size=30):
     draw.text(position, text, color, font=font)
     return cv2.cvtColor(np.asarray(img), cv2.COLOR_RGB2BGR)
 
-
-# 비율 계산 함수
 def eye_ratio(eye):
     A = euclidean_distances(np.array(eye[1]), np.array(eye[5]))
     B = euclidean_distances(np.array(eye[2]), np.array(eye[4]))
     C = euclidean_distances(np.array(eye[0]), np.array(eye[3]))
     return ((A + B) / 2.0) / C
-
 
 def mouth_ratio(shape):
     A = euclidean_distances(np.array(shape[50]), np.array(shape[58]))
@@ -46,12 +65,11 @@ def mouth_ratio(shape):
     D = euclidean_distances(np.array(shape[48]), np.array(shape[54]))
     return ((A + B + C) / 3) / D
 
-
 def process_frame(frame, student_name):
     fr = None
     sleep = None
     yawn_count = 0
-    student_info = students_data.get(student_name, {'yawn_count': 0, 'timer': 0})
+    student_info = students_data.get(student_name, {'yawn_count': 0, 'timer': 0, 'last_update': time.time()})
     yawn_count = student_info['yawn_count']
     timer = student_info['timer']
 
@@ -72,33 +90,32 @@ def process_frame(frame, student_name):
             left_ear = eye_ratio(left_eye)
             ear = (left_ear + right_ear) / 2.0
 
-            # 눈 비율이 기준치보다 낮을 경우
             if ear < 0.23:
                 timer += 1
-                if timer >= 20:  # 타이머가 50 이상이면 졸음 상태로 간주
+                if timer >= 20:
                     sleep = True
             else:
-                timer = 0  # 눈을 떴을 때 타이머 초기화
+                timer = 0
                 sleep = False
 
-            # 하품 비율이 기준치를 넘으면 하품 카운트 증가
             if mar > 0.70:
                 yawn_count += 1
-                time.sleep(3)  # 하품 후 약간의 대기 시간을 줌
+                time.sleep(3)
 
-    # 학생 정보 업데이트 (timer가 유지되도록 함)
+    # 마지막 업데이트 시간을 현재 시간으로 저장
     students_data[student_name] = {
         'fr': fr,
         'sleep': sleep if sleep is not None else False,
         'yawn_count': yawn_count,
-        'timer': timer  # 현재 상태의 timer 값을 그대로 저장
+        'timer': timer,
+        'last_update': time.time()  # 마지막 업데이트 시간 기록
     }
 
     return fr, students_data[student_name]['sleep'], yawn_count, timer
 
 
 @app.route('/')
-def index():    
+def index():
     return render_template('index.html')
 
 @app.route('/student', methods=['GET', 'POST'])
@@ -112,12 +129,10 @@ def student():
 def get_all_student_data():
     def event_stream():
         while True:
-            time.sleep(0.5) 
+            time.sleep(0.5)
             data_to_send = json.dumps(students_data)
-            # print("Sending data:", data_to_send)
             yield f"data: {data_to_send}\n\n"
     return Response(event_stream(), mimetype="text/event-stream")
-
 
 @app.route('/student_monitor/<student_name>')
 def student_monitor(student_name):
@@ -126,7 +141,8 @@ def student_monitor(student_name):
             'fr': False,
             'sleep': None,
             'yawn_count': 0,
-            'timer': 0
+            'timer': 0,
+            'last_update': time.time()
         }
     return render_template('student_monitor.html', student_name=student_name)
 
@@ -139,11 +155,11 @@ def get_student_data(student_name):
                 'fr': False,
                 'sleep': None,
                 'yawn_count': 0,
-                'timer': 0
+                'timer': 0,
+                'last_update': time.time()
             })
             yield f"data: {json.dumps(student_data)}\n\n"
     return Response(event_stream(), mimetype="text/event-stream")
-
 
 @socketio.on('image')
 def handle_image(data):
@@ -165,4 +181,3 @@ def teacher():
 
 if __name__ == '__main__':
     socketio.run(app, host="0.0.0.0", port=5000)
-
