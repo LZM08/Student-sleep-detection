@@ -18,17 +18,15 @@ app = Flask(__name__)
 socketio = SocketIO(app)
 
 students_data = {}
-timeout_threshold = 10  # 마지막 업데이트 후 10초 지나면 삭제
+timeout_threshold = 10 
 
-# 학생 데이터를 주기적으로 체크해 오래된 데이터 삭제하는 함수
+# 오래된 학색 정보 제거
 def cleanup_old_students():
     while True:
-        time.sleep(5)  # 5초마다 검사
+        time.sleep(5)
         current_time = time.time()
         students_to_delete = []
-
         for student_name, data in students_data.items():
-            # 마지막 업데이트가 timeout_threshold 이상 차이 나면 삭제 대상에 추가
             if current_time - data['last_update'] > timeout_threshold:
                 students_to_delete.append(student_name)
 
@@ -40,17 +38,6 @@ def cleanup_old_students():
 cleanup_thread = threading.Thread(target=cleanup_old_students)
 cleanup_thread.daemon = True
 cleanup_thread.start()
-
-def add_text(img, text, position, color=(0, 255, 10), size=30):
-    if isinstance(img, np.ndarray):
-        img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-    draw = ImageDraw.Draw(img)
-
-    font_path = "C:/Windows/Fonts/malgun.ttf"
-    font = ImageFont.truetype(font_path, size, encoding="utf-8")
-
-    draw.text(position, text, color, font=font)
-    return cv2.cvtColor(np.asarray(img), cv2.COLOR_RGB2BGR)
 
 def eye_ratio(eye):
     A = euclidean_distances(np.array(eye[1]), np.array(eye[5]))
@@ -72,7 +59,6 @@ def process_frame(frame, student_name):
     student_info = students_data.get(student_name, {'yawn_count': 0, 'timer': 0, 'last_update': time.time()})
     yawn_count = student_info['yawn_count']
     timer = student_info['timer']
-
     rects = detector(frame, 0)
 
     if len(rects) == 0:
@@ -82,7 +68,6 @@ def process_frame(frame, student_name):
         for rect in rects:
             shape = predictor(frame, rect)
             shape = np.matrix([[p.x, p.y] for p in shape.parts()])
-
             mar = mouth_ratio(shape)
             right_eye = shape[36:42]
             left_eye = shape[42:48]
@@ -102,15 +87,13 @@ def process_frame(frame, student_name):
                 yawn_count += 1
                 time.sleep(3)
 
-    # 마지막 업데이트 시간을 현재 시간으로 저장
     students_data[student_name] = {
         'fr': fr,
         'sleep': sleep if sleep is not None else False,
         'yawn_count': yawn_count,
         'timer': timer,
-        'last_update': time.time()  # 마지막 업데이트 시간 기록
+        'last_update': time.time() 
     }
-
     return fr, students_data[student_name]['sleep'], yawn_count, timer
 
 
@@ -166,9 +149,7 @@ def handle_image(data):
     npimg = np.frombuffer(base64.b64decode(data['image']), np.uint8)
     frame = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
     student_name = data['student_name']
-
     fr, sleep, yawn_count, timer = process_frame(frame, student_name)
-
     emit('response', {
         'fr': fr,
         'sleep': sleep,
