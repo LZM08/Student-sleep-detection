@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, Response
+from flask import Flask, render_template, request, redirect, url_for, Response, jsonify
 import json
 import time
 import cv2
@@ -20,7 +20,7 @@ socketio = SocketIO(app, async_mode='threading')
 students_data = {}
 timeout_threshold = 10 
 
-# 오래된 학색 정보 제거
+# 오래된 학생 정보 제거
 def cleanup_old_students():
     while True:
         time.sleep(5)
@@ -96,7 +96,6 @@ def process_frame(frame, student_name):
     }
     return fr, students_data[student_name]['sleep'], yawn_count, timer
 
-
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -159,6 +158,13 @@ def handle_image(data):
 @app.route('/teacher')
 def teacher():
     return render_template('teacher_sse.html')
+
+# 새로운 라우트: 하품 횟수 초기화
+@app.route('/reset_yawn_count', methods=['POST'])
+def reset_yawn_count():
+    for student in students_data:
+        students_data[student]['yawn_count'] = 0
+    return jsonify({"status": "success", "message": "하품 횟수가 초기화되었습니다."})
 
 if __name__ == '__main__':
     socketio.run(app, host="0.0.0.0", port=5000)
